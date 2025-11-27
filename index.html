@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador DD y TI 2026 - Docentes Brown</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide React Icons (UMD Version - Fixed) -->
+    <script src="https://unpkg.com/lucide-react@0.300.0/dist/umd/lucide-react.min.js"></script>
+
+    <!-- Google Fonts: Roboto & Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3efdc; /* Nuevo color crema */
+        }
+        h1, h2, h3, .btn-font {
+            font-family: 'Poppins', sans-serif;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .docentes-header {
+            background-color: #24496e; /* Nuevo Azul */
+        }
+        .docentes-footer {
+            background-color: #4d3069; /* Nuevo Violeta */
+        }
+        
+        /* Botones especiales */
+        .cafecito-btn {
+            background-color: #be7f4f; /* Nuevo Marrón */
+            color: white;
+        }
+        .whatsapp-btn {
+            background-color: #25D366; /* WhatsApp Green */
+            color: white;
+        }
+        
+        /* Select personalizado para que combine */
+        .custom-select {
+            background-color: #f3efdc;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Sheet ID provided by user
+        const SHEET_ID = '14mv2oIYzDhDHAQ5rYHhAb26c_apco8kzs8nZayyghdc';
+        const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
+
+        // Icons component wrapper (Fixed for Lucide React UMD)
+        const Icon = ({ name, size = 20, className }) => {
+            const LucideIcon = window.lucideReact ? window.lucideReact[name] : null;
+            if (!LucideIcon) {
+                console.warn(`Icon "${name}" not found`);
+                return null;
+            }
+            return React.createElement(LucideIcon, { size, className });
+        };
+
+        const App = () => {
+            const [data, setData] = useState([]);
+            const [districts, setDistricts] = useState([]);
+            const [selectedDistrict, setSelectedDistrict] = useState('');
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            // Fetch and parse CSV data
+            useEffect(() => {
+                const fetchData = async () => {
+                    try {
+                        const response = await fetch(SHEET_CSV_URL);
+                        const text = await response.text();
+                        
+                        // Parse CSV (Simple parsing)
+                        const rows = text.split('\n').map(row => row.split(','));
+                        const headers = rows[0].map(h => h.trim());
+                        
+                        const parsedData = rows.slice(1).map(row => {
+                            const obj = {};
+                            headers.forEach((header, index) => {
+                                let value = row[index] ? row[index].replace(/^"|"$/g, '').trim() : '';
+                                obj[header] = value;
+                            });
+                            return obj;
+                        }).filter(item => item.DISTRITO);
+
+                        const uniqueDistricts = [...new Set(parsedData.map(item => item.DISTRITO))].sort();
+
+                        setData(parsedData);
+                        setDistricts(uniqueDistricts);
+                        setLoading(false);
+                    } catch (err) {
+                        console.error("Error fetching data:", err);
+                        setError("No se pudo cargar la base de datos. Intente nuevamente más tarde.");
+                        setLoading(false);
+                    }
+                };
+
+                fetchData();
+            }, []);
+
+            const getDistrictData = () => {
+                return data.find(item => item.DISTRITO === selectedDistrict);
+            };
+
+            const currentData = getDistrictData();
+
+            // Helper to determine button style based on link availability
+            const renderLinkButton = (label, url, iconName, colorClass) => {
+                const hasLink = url && url.length > 5; 
+                
+                if (!hasLink) {
+                    return (
+                        <button disabled className="w-full flex items-center justify-between p-4 bg-gray-200 text-gray-400 rounded-lg cursor-not-allowed border-2 border-gray-200 opacity-60">
+                            <div className="flex items-center gap-3">
+                                <Icon name={iconName} size={24} />
+                                <span className="font-semibold">{label}</span>
+                            </div>
+                            <span className="text-xs font-medium uppercase tracking-wider">No disponible</span>
+                        </button>
+                    );
+                }
+
+                return (
+                    <a 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={`w-full flex items-center justify-between p-4 rounded-lg transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg group border-l-4 ${colorClass} bg-white shadow-sm border border-gray-100`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full bg-opacity-10 ${colorClass.replace('border-', 'bg-').replace('500', '100')} ${colorClass.replace('border-', 'text-')}`}>
+                                <Icon name={iconName} size={24} />
+                            </div>
+                            <span className="font-semibold text-gray-800 group-hover:text-blue-900">{label}</span>
+                        </div>
+                        <Icon name="ExternalLink" size={18} className="text-gray-400 group-hover:text-blue-600" />
+                    </a>
+                );
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col relative">
+                    {/* Header */}
+                    <header className="docentes-header text-white py-8 px-4 shadow-md text-center">
+                        <div className="max-w-4xl mx-auto">
+                            <h2 className="text-sm uppercase tracking-widest text-[#f3efdc]/80 mb-2 font-semibold">Herramientas Docentes</h2>
+                            <h1 className="text-3xl md:text-4xl font-bold mb-2">Destino Definitivo y Titularización 2026</h1>
+                            <p className="text-[#f3efdc]/90 italic">
+                                Información centralizada por{' '}
+                                <a 
+                                    href="https://www.instagram.com/docentesbrown/" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="font-bold underline hover:text-[#be7f4f] transition-colors"
+                                >
+                                    @docentesbrown
+                                </a>
+                            </p>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-grow container mx-auto px-4 py-8 max-w-2xl">
+                        
+                        {/* Selector Card */}
+                        <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 mb-8" style={{borderColor: '#24496e'}}>
+                            <label className="block text-gray-700 text-sm font-bold mb-2 ml-1" htmlFor="distrito">
+                                Seleccioná tu Distrito
+                            </label>
+                            <div className="relative">
+                                <select
+                                    id="distrito"
+                                    value={selectedDistrict}
+                                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                                    className="custom-select block appearance-none w-full border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-[#be7f4f] font-medium text-lg"
+                                    disabled={loading}
+                                >
+                                    <option value="">{loading ? "Cargando distritos..." : "-- Elegí un Distrito --"}</option>
+                                    {districts.map((d, idx) => (
+                                        <option key={idx} value={d}>{d}</option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <Icon name="ChevronDown" size={20} />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Loading / Error States */}
+                        {loading && (
+                            <div className="text-center py-10">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{borderColor: '#24496e'}}></div>
+                                <p className="mt-4 text-gray-600">Cargando base de datos...</p>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm" role="alert">
+                                <p className="font-bold">Error</p>
+                                <p>{error}</p>
+                            </div>
+                        )}
+
+                        {/* Result Cards */}
+                        {!loading && !error && selectedDistrict && currentData && (
+                            <div className="space-y-4 animate-fade-in-up">
+                                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <Icon name="MapPin" style={{color: '#be7f4f'}} />
+                                    {selectedDistrict}
+                                </h3>
+                                
+                                <div className="grid gap-4">
+                                    {/* Link Vacantes - Destacado */}
+                                    {renderLinkButton("Ver Vacantes Disponibles", currentData['LINK_VACANTES'], "Search", "border-blue-600")}
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Destino Definitivo Group */}
+                                        <div className="space-y-4">
+                                            {renderLinkButton("Comunicado DD", currentData['COMUNICADO DD'], "FileText", "border-green-500")}
+                                            {renderLinkButton("Cronograma DD", currentData['CRONOGRAMA DD'], "Calendar", "border-green-600")}
+                                        </div>
+
+                                        {/* Titularización Interina Group */}
+                                        <div className="space-y-4">
+                                            {renderLinkButton("Comunicado TI", currentData['COMUNICADO TI'], "FileText", "border-purple-500")}
+                                            {renderLinkButton("Cronograma TI", currentData['CRONOGRAMA TI'], "Calendar", "border-purple-600")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 p-4 bg-[#f3efdc] rounded-lg border border-[#be7f4f]/30 text-sm text-gray-800 flex items-start gap-3">
+                                    <Icon name="Info" size={20} className="mt-0.5 flex-shrink-0 text-[#be7f4f]" />
+                                    <p>Recuerda siempre verificar la información en los canales oficiales de la SAD de tu distrito.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {!selectedDistrict && !loading && (
+                            <div className="text-center py-12 opacity-50">
+                                <Icon name="MousePointerClick" size={48} className="mx-auto mb-2 text-gray-400" />
+                                <p className="text-gray-500">Seleccioná un distrito para ver la información</p>
+                            </div>
+                        )}
+
+                    </main>
+
+                    {/* Footer Area */}
+                    <div className="docentes-footer text-white mt-auto pt-10 pb-6 px-4">
+                        <div className="container mx-auto max-w-2xl text-center space-y-8">
+                            
+                            {/* Buscador de Escuelas Button */}
+                            <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
+                                <h3 className="text-lg font-semibold mb-4 text-[#f3efdc]">¿Necesitás encontrar una escuela?</h3>
+                                <a 
+                                    href="https://docentesbrown.github.io/Buscador-Provincial-de-Escuelas-Estatales/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-3 bg-white text-[#4d3069] hover:bg-[#f3efdc] font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:scale-105"
+                                >
+                                    <Icon name="School" size={20} />
+                                    Ir al Buscador Provincial
+                                </a>
+                            </div>
+
+                            {/* Contacto y Apoyo - Grid responsive */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                {/* Botón Cafecito */}
+                                <a 
+                                    href="https://cafecito.app/docentesbrown" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="cafecito-btn font-bold py-3 px-6 rounded-full shadow-md flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+                                >
+                                    <Icon name="Coffee" size={20} />
+                                    Doná un Cafecito
+                                </a>
+
+                                {/* Botón WhatsApp */}
+                                <a 
+                                    href="https://wa.me/5491153196358" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="whatsapp-btn font-bold py-3 px-6 rounded-full shadow-md flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+                                >
+                                    <Icon name="MessageCircle" size={20} />
+                                    Enviar WhatsApp
+                                </a>
+                            </div>
+
+                            <div className="border-t border-[#be7f4f]/30 mt-8 pt-6">
+                                <p className="text-xs text-[#f3efdc]/80">
+                                    Optimizado por 
+                                    <a href="https://www.instagram.com/docentesbrown/" target="_blank" className="font-bold hover:text-white ml-1">
+                                        @docentesbrown
+                                    </a>
+                                    <br/>
+                                    Apoyamos la educación pública y la construcción comunitaria.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
